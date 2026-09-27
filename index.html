@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life & Work Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="manifest" href="manifest.json">
+</head>
+<body class="bg-slate-50 text-slate-800 flex flex-col min-h-screen pb-20">
+
+    <!-- Header -->
+    <header class="bg-indigo-600 text-white p-4 shadow-md text-center font-bold text-lg">
+        Life & Work Hub
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 p-4 max-w-md mx-auto w-full">
+        
+        <!-- Home Section -->
+        <section id="section-home" class="space-y-4">
+            <h2 class="text-xl font-semibold">Dashboard</h2>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                    <p class="text-sm text-slate-500">Work Shifts</p>
+                    <p id="dash-shifts" class="text-lg font-bold">0 Logged</p>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                    <p class="text-sm text-slate-500">Total Expenses</p>
+                    <p id="dash-expenses" class="text-lg font-bold">$0.00</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Schedule Section -->
+        <section id="section-schedule" class="space-y-4 hidden">
+            <h2 class="text-xl font-semibold">Work & Appointments</h2>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
+                <input type="text" id="shift-name" placeholder="Shift or Appointment Name" class="w-full p-2 border rounded-lg text-sm">
+                <input type="date" id="shift-date" class="w-full p-2 border rounded-lg text-sm">
+                <button onclick="addShift()" class="w-full bg-indigo-600 text-white p-2 rounded-lg font-medium text-sm">Add to Schedule</button>
+            </div>
+            <div id="shift-list" class="space-y-2"></div>
+        </section>
+
+        <!-- Finances Section -->
+        <section id="section-finances" class="space-y-4 hidden">
+            <h2 class="text-xl font-semibold">Financial Tracker</h2>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
+                <input type="text" id="expense-name" placeholder="Expense description" class="w-full p-2 border rounded-lg text-sm">
+                <input type="number" id="expense-amount" placeholder="Amount ($)" class="w-full p-2 border rounded-lg text-sm">
+                <button onclick="addExpense()" class="w-full bg-indigo-600 text-white p-2 rounded-lg font-medium text-sm">Log Expense</button>
+            </div>
+            <div id="expense-list" class="space-y-2"></div>
+        </section>
+
+        <!-- Health Section -->
+        <section id="section-health" class="space-y-4 hidden">
+            <h2 class="text-xl font-semibold">Health & Fitness</h2>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
+                <input type="text" id="workout-name" placeholder="Workout or Diet note" class="w-full p-2 border rounded-lg text-sm">
+                <button onclick="addWorkout()" class="w-full bg-indigo-600 text-white p-2 rounded-lg font-medium text-sm">Log Fitness Goal</button>
+            </div>
+            <div id="workout-list" class="space-y-2"></div>
+        </section>
+
+    </main>
+
+    <!-- Bottom Navigation Bar for Mobile -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around p-3 shadow-lg">
+        <button onclick="switchTab('home')" id="nav-home" class="text-indigo-600 font-medium text-sm">Home</button>
+        <button onclick="switchTab('schedule')" id="nav-schedule" class="text-slate-400 font-medium text-sm">Schedule</button>
+        <button onclick="switchTab('finances')" id="nav-finances" class="text-slate-400 font-medium text-sm">Finances</button>
+        <button onclick="switchTab('health')" id="nav-health" class="text-slate-400 font-medium text-sm">Health</button>
+    </nav>
+
+    <!-- App Logic Script -->
+    <script>
+        function switchTab(tabName) {
+            ['home', 'schedule', 'finances', 'health'].forEach(t => {
+                document.getElementById('section-' + t).classList.add('hidden');
+                document.getElementById('nav-' + t).className = "text-slate-400 font-medium text-sm";
+            });
+            document.getElementById('section-' + tabName).classList.remove('hidden');
+            document.getElementById('nav-' + tabName).className = "text-indigo-600 font-medium text-sm";
+        }
+
+        let shifts = JSON.parse(localStorage.getItem('shifts') || '[]');
+        let expenses = JSON.parse(localStorage.getItem('expenses') || '[]');
+        let workouts = JSON.parse(localStorage.getItem('workouts') || '[]');
+
+        function updateUI() {
+            document.getElementById('dash-shifts').innerText = shifts.length + ' Logged';
+            let totalExp = expenses.reduce((sum, item) => sum + Number(item.amount), 0);
+            document.getElementById('dash-expenses').innerText = '$' + totalExp.toFixed(2);
+
+            document.getElementById('shift-list').innerHTML = shifts.map(s => `<div class="bg-white p-3 rounded-lg shadow-sm border text-sm">📅 <strong>${s.name}</strong> - ${s.date}</div>`).join('');
+            document.getElementById('expense-list').innerHTML = expenses.map(e => `<div class="bg-white p-3 rounded-lg shadow-sm border text-sm">💸 <strong>${e.name}</strong>: $${Number(e.amount).toFixed(2)}</div>`).join('');
+            document.getElementById('workout-list').innerHTML = workouts.map(w => `<div class="bg-white p-3 rounded-lg shadow-sm border text-sm">💪 <strong>${w.name}</strong></div>`).join('');
+        }
+
+        function addShift() {
+            let name = document.getElementById('shift-name').value;
+            let date = document.getElementById('shift-date').value;
+            if(!name || !date) return;
+            shifts.push({name, date});
+            localStorage.setItem('shifts', JSON.stringify(shifts));
+            document.getElementById('shift-name').value = '';
+            document.getElementById('shift-date').value = '';
+            updateUI();
+        }
+
+        function addExpense() {
+            let name = document.getElementById('expense-name').value;
+            let amount = document.getElementById('expense-amount').value;
+            if(!name || !amount) return;
+            expenses.push({name, amount});
+            localStorage.setItem('expenses', JSON.stringify(expenses));
+            document.getElementById('expense-name').value = '';
+            document.getElementById('expense-amount').value = '';
+            updateUI();
+        }
+
+        function addWorkout() {
+            let name = document.getElementById('workout-name').value;
+            if(!name) return;
+            workouts.push({name});
+            localStorage.setItem('workouts', JSON.stringify(workouts));
+            document.getElementById('workout-name').value = '';
+            updateUI();
+        }
+
+        updateUI();
+    </script>
+</body>
+</html>
