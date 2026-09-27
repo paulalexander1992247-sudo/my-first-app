@@ -1,7 +1,7 @@
 {
   "name": "Life & Work Hub",
   "short_name": "LifeHub",
-  "start_url": "/",
+"start_url": "/my-first-app/",
   "display": "standalone",
   "background_color": "#f8fafc",
   "theme_color": "#4f46e5",
