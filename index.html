@@ -33,15 +33,45 @@
         </section>
 
         <!-- Schedule Section -->
-        <section id="section-schedule" class="space-y-4 hidden">
-            <h2 class="text-xl font-semibold">Work & Appointments</h2>
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
-                <input type="text" id="shift-name" placeholder="Shift or Appointment Name" class="w-full p-2 border rounded-lg text-sm">
-                <input type="date" id="shift-date" class="w-full p-2 border rounded-lg text-sm">
-                <button onclick="addShift()" class="w-full bg-indigo-600 text-white p-2 rounded-lg font-medium text-sm">Add to Schedule</button>
+<section id="section-schedule" class="space-y-4 hidden">
+    <div class="flex justify-between items-center">
+        <h2 class="text-xl font-semibold">Schedule & Shifts</h2>
+        <div class="space-x-1">
+            <button onclick="filterSchedule('all')" id="filter-all" class="px-3 py-1 text-xs rounded-full bg-indigo-600 text-white font-medium">All</button>
+            <button onclick="filterSchedule('today')" id="filter-today" class="px-3 py-1 text-xs rounded-full bg-slate-200 text-slate-700 font-medium">Today</button>
+        </div>
+    </div>
+
+    <!-- Add Event Card -->
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 space-y-3">
+        <input type="text" id="shift-name" placeholder="Event Name (e.g., Cafe Shift, Doctor)" class="w-full p-2.5 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        
+        <div class="grid grid-cols-2 gap-2">
+            <select id="shift-category" class="w-full p-2.5 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                <option value="Work">🟢 Work Shift</option>
+                <option value="Appointment">🔵 Appointment</option>
+                <option value="Personal">🟠 Personal</option>
+            </select>
+            <input type="date" id="shift-date" class="w-full p-2.5 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 text-xs text-slate-500">
+            <div>
+                <label class="block mb-1">Start Time</label>
+                <input type="time" id="shift-start" class="w-full p-2 rounded-lg border border-slate-200">
             </div>
-            <div id="shift-list" class="space-y-2"></div>
-        </section>
+            <div>
+                <label class="block mb-1">End Time</label>
+                <input type="time" id="shift-end" class="w-full p-2 rounded-lg border border-slate-200">
+            </div>
+        </div>
+
+        <button onclick="addShift()" class="w-full py-2.5 bg-indigo-600 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 transition">Add to Schedule</button>
+    </div>
+
+    <!-- Event List -->
+    <div id="shift-list" class="space-y-3"></div>
+</section>
 
         <!-- Finances Section -->
         <section id="section-finances" class="space-y-4 hidden">
@@ -76,61 +106,100 @@
 
     <!-- App Logic Script -->
     <script>
-        function switchTab(tabName) {
-            ['home', 'schedule', 'finances', 'health'].forEach(t => {
-                document.getElementById('section-' + t).classList.add('hidden');
-                document.getElementById('nav-' + t).className = "text-slate-400 font-medium text-sm";
-            });
-            document.getElementById('section-' + tabName).classList.remove('hidden');
-            document.getElementById('nav-' + tabName).className = "text-indigo-600 font-medium text-sm";
-        }
+// Load schedule data on startup
+let schedules = JSON.parse(localStorage.getItem('schedules')) || [];
+let currentFilter = 'all';
 
-        let shifts = JSON.parse(localStorage.getItem('shifts') || '[]');
-        let expenses = JSON.parse(localStorage.getItem('expenses') || '[]');
-        let workouts = JSON.parse(localStorage.getItem('workouts') || '[]');
+// Set default date picker to today automatically
+document.addEventListener('DOMContentLoaded', () => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const dateInput = document.getElementById('shift-date');
+    if (dateInput) dateInput.value = todayStr;
+    renderSchedule();
+});
 
-        function updateUI() {
-            document.getElementById('dash-shifts').innerText = shifts.length + ' Logged';
-            let totalExp = expenses.reduce((sum, item) => sum + Number(item.amount), 0);
-            document.getElementById('dash-expenses').innerText = '$' + totalExp.toFixed(2);
+function addShift() {
+    const name = document.getElementById('shift-name').value.trim();
+    const category = document.getElementById('shift-category').value;
+    const date = document.getElementById('shift-date').value;
+    const startTime = document.getElementById('shift-start').value;
+    const endTime = document.getElementById('shift-end').value;
 
-            document.getElementById('shift-list').innerHTML = shifts.map(s => `<div class="bg-white p-3 rounded-lg shadow-sm border text-sm">📅 <strong>${s.name}</strong> - ${s.date}</div>`).join('');
-            document.getElementById('expense-list').innerHTML = expenses.map(e => `<div class="bg-white p-3 rounded-lg shadow-sm border text-sm">💸 <strong>${e.name}</strong>: $${Number(e.amount).toFixed(2)}</div>`).join('');
-            document.getElementById('workout-list').innerHTML = workouts.map(w => `<div class="bg-white p-3 rounded-lg shadow-sm border text-sm">💪 <strong>${w.name}</strong></div>`).join('');
-        }
+    if (!name || !date) {
+        alert('Please enter an event name and date.');
+        return;
+    }
 
-        function addShift() {
-            let name = document.getElementById('shift-name').value;
-            let date = document.getElementById('shift-date').value;
-            if(!name || !date) return;
-            shifts.push({name, date});
-            localStorage.setItem('shifts', JSON.stringify(shifts));
-            document.getElementById('shift-name').value = '';
-            document.getElementById('shift-date').value = '';
-            updateUI();
-        }
+    const newEvent = {
+        id: Date.now(),
+        name,
+        category,
+        date,
+        startTime,
+        endTime
+    };
 
-        function addExpense() {
-            let name = document.getElementById('expense-name').value;
-            let amount = document.getElementById('expense-amount').value;
-            if(!name || !amount) return;
-            expenses.push({name, amount});
-            localStorage.setItem('expenses', JSON.stringify(expenses));
-            document.getElementById('expense-name').value = '';
-            document.getElementById('expense-amount').value = '';
-            updateUI();
-        }
+    schedules.push(newEvent);
+    localStorage.setItem('schedules', JSON.stringify(schedules));
 
-        function addWorkout() {
-            let name = document.getElementById('workout-name').value;
-            if(!name) return;
-            workouts.push({name});
-            localStorage.setItem('workouts', JSON.stringify(workouts));
-            document.getElementById('workout-name').value = '';
-            updateUI();
-        }
+    // Clear inputs
+    document.getElementById('shift-name').value = '';
+    document.getElementById('shift-start').value = '';
+    document.getElementById('shift-end').value = '';
 
-        updateUI();
+    renderSchedule();
+}
+
+function deleteShift(id) {
+    schedules = schedules.filter(item => item.id !== id);
+    localStorage.setItem('schedules', JSON.stringify(schedules));
+    renderSchedule();
+}
+
+function filterSchedule(filter) {
+    currentFilter = filter;
+    document.getElementById('filter-all').className = filter === 'all' ? 'px-3 py-1 text-xs rounded-full bg-indigo-600 text-white font-medium' : 'px-3 py-1 text-xs rounded-full bg-slate-200 text-slate-700 font-medium';
+    document.getElementById('filter-today').className = filter === 'today' ? 'px-3 py-1 text-xs rounded-full bg-indigo-600 text-white font-medium' : 'px-3 py-1 text-xs rounded-full bg-slate-200 text-slate-700 font-medium';
+    renderSchedule();
+}
+
+function renderSchedule() {
+    const listEl = document.getElementById('shift-list');
+    listEl.innerHTML = '';
+
+    let filtered = schedules;
+    if (currentFilter === 'today') {
+        const todayStr = new Date().toISOString().split('T')[0];
+        filtered = schedules.filter(item => item.date === todayStr);
+    }
+
+    if (filtered.length === 0) {
+        listEl.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">No scheduled events found.</p>`;
+        return;
+    }
+
+    filtered.forEach(item => {
+        // Badge styling based on category
+        let badgeColor = 'bg-blue-100 text-blue-700';
+        if (item.category === 'Work') badgeColor = 'bg-emerald-100 text-emerald-700';
+        if (item.category === 'Personal') badgeColor = 'bg-amber-100 text-amber-700';
+
+        const card = document.createElement('div');
+        card.className = "bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex justify-between items-start";
+        card.innerHTML = `
+            <div class="space-y-1">
+                <div class="flex items-center space-x-2">
+                    <span class="text-xs px-2 py-0.5 rounded-full font-medium ${badgeColor}">${item.category}</span>
+                    <span class="text-xs text-slate-400">${item.date}</span>
+                </div>
+                <h4 class="font-semibold text-slate-800 text-sm">${item.name}</h4>
+                ${item.startTime || item.endTime ? `<p class="text-xs text-slate-500">🕒 ${item.startTime \vert{}\vert{} '??'} -${item.endTime || '??'}</p>` : ''}
+            </div>
+            <button onclick="deleteShift(${item.id})" class="text-slate-300 hover:text-red-500 text-xs font-bold px-2 py-1">✕</button>
+        `;
+        listEl.appendChild(card);
+    });
+}
     </script>
 </body>
 </html>
